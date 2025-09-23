@@ -1,0 +1,25 @@
+'use client';
+
+import { Action, Actions } from '@/components/ai-elements/actions';
+import { CopyIcon, RefreshCcwIcon } from 'lucide-react';
+
+interface AssistantActionsProps {
+  text: string;
+  onRegenerate: () => void;
+}
+
+export const AssistantActions = ({
+  text,
+  onRegenerate,
+}: AssistantActionsProps) => {
+  return (
+    <Actions className="mt-2">
+      <Action onClick={() => onRegenerate()} label="Retry">
+        <RefreshCcwIcon className="size-3" />
+      </Action>
+      <Action onClick={() => navigator.clipboard.writeText(text)} label="Copy">
+        <CopyIcon className="size-3" />
+      </Action>
+    </Actions>
+  );
+};
