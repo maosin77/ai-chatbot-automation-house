@@ -1,4 +1,3 @@
-- svgr
 - sidebar
 - handle multiple models #components/chat/PromptInput.tsx:31
 - tests
