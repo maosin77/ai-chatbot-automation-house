@@ -1,20 +1,21 @@
 'use client';
 
-import { Chat } from '@/components/chat/Chat';
-import { ChatHeader } from '@/components/chat/ChatHeader';
+import { useEffect } from 'react';
+import { useNavigation } from '@/hooks/useNavigation';
 
-const ChatBotDemo = () => {
+export default function HomePage() {
+  const { navigateToChatDefault } = useNavigation();
+
+  useEffect(() => {
+    navigateToChatDefault();
+  }, [navigateToChatDefault]);
+
   return (
-    <div className="flex flex-col h-screen">
-      <ChatHeader />
-      <div className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto p-6 relative size-full h-[calc(100vh-7rem)]">
-          <Chat />
-        </div>
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-lg text-muted-foreground">
+        Redirecting to chat...
       </div>
     </div>
   );
-};
-
-export default ChatBotDemo;
+}
 

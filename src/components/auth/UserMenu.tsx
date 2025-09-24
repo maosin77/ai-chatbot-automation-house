@@ -1,6 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
+import { useNavigation } from '@/hooks/useNavigation';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,11 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { ChatStorage } from '@/lib/chat-storage';
 
 export const UserMenu = () => {
   const { data: session } = useSession();
+  const { navigateToProfile } = useNavigation();
 
   if (!session?.user) return null;
 
@@ -23,8 +25,11 @@ export const UserMenu = () => {
     if (session) {
       ChatStorage.clearSessionData(session);
     }
-
     await signOut({ callbackUrl: '/login' });
+  };
+
+  const handleProfileClick = () => {
+    navigateToProfile();
   };
 
   const userInitials =
@@ -56,6 +61,11 @@ export const UserMenu = () => {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleProfileClick}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

@@ -235,7 +235,6 @@ export const PromptInput = ({
   const anchorRef = useRef<HTMLSpanElement>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
-  // Find nearest form to scope drag & drop
   useEffect(() => {
     const root = anchorRef.current?.closest('form');
     if (root instanceof HTMLFormElement) {
