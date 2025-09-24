@@ -1,7 +1,7 @@
 'use client';
 
 import { MessageSquare, Clock } from 'lucide-react';
-import { formatRelativeTime } from '@/lib/chat-storage';
+import { formatRelativeTime } from '@/lib/utils';
 
 interface ConversationItemProps {
   conversation: {

@@ -12,11 +12,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut } from 'lucide-react';
+import { ChatStorage } from '@/lib/chat-storage';
 
 export const UserMenu = () => {
   const { data: session } = useSession();
 
   if (!session?.user) return null;
+
+  const handleSignOut = async () => {
+    if (session) {
+      ChatStorage.clearSessionData(session);
+    }
+
+    await signOut({ callbackUrl: '/login' });
+  };
 
   const userInitials =
     session.user.name
@@ -48,7 +57,7 @@ export const UserMenu = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/login' })}>
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

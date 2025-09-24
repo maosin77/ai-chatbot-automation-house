@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,44 +10,54 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
-import { ClientChatStorage } from '@/lib/chat-storage';
+import { useChatContext } from '@/contexts/ChatContext';
+import { useNavigation } from '@/hooks/useNavigation';
+import { ConversationSummary } from '@/lib/chat-storage';
 
 interface ConversationMenuProps {
-  conversationId: string;
-  currentTitle: string;
-  onDelete: (event: React.MouseEvent) => void;
-  onUpdate: () => void;
+  conversation: ConversationSummary;
 }
 
-export function ConversationMenu({
-  conversationId,
-  currentTitle,
-  onDelete,
-  onUpdate,
-}: ConversationMenuProps) {
+export function ConversationMenu({ conversation }: ConversationMenuProps) {
+  const { renameConversation, deleteConversation, id } = useChatContext();
+  const { navigateToNewChat } = useNavigation();
+
+  const conversationId = conversation.id;
+  const currentTitle = conversation.title;
+
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(currentTitle);
 
-  const handleRename = () => {
+  const handleRename = useCallback(() => {
     if (newTitle.trim() && newTitle !== currentTitle) {
       try {
-        const conversation = ClientChatStorage.loadConversation(
-          conversationId
-        );
-        if (conversation) {
-          ClientChatStorage.saveConversation(
-            conversationId,
-            conversation.messages,
-            newTitle.trim()
-          );
-          onUpdate();
-        }
+        renameConversation(conversationId, newTitle.trim());
       } catch (error) {
         console.error('Error renaming conversation:', error);
       }
     }
     setIsEditing(false);
-  };
+  }, [newTitle, currentTitle, conversationId, renameConversation]);
+
+  const handleDeleteConversation = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (confirm('Are you sure you want to delete this conversation?')) {
+        // TODO: add custom dialog
+        try {
+          if (conversationId === id) {
+            navigateToNewChat();
+          }
+          deleteConversation(conversationId);
+        } catch (error) {
+          console.error('Error deleting conversation:', error);
+        }
+      }
+    },
+    [conversationId, deleteConversation, id, navigateToNewChat]
+  );
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -97,10 +107,7 @@ export function ConversationMenu({
           Rename
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(e);
-          }}
+          onClick={handleDeleteConversation}
           className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer "
         >
           <Trash2 className="h-4 w-4" />

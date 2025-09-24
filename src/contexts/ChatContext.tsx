@@ -12,15 +12,17 @@ import { ChatStatus, UIMessage } from 'ai';
 import { PromptInputMessage } from '@/components/ai-elements/prompt-input';
 import { useChatPersistence } from '@/hooks/useChatPersistence';
 import { useSearchParams } from 'next/navigation';
-import { ConversationSummary } from '@/lib/chat-storage';
+import { ChatStorage, ConversationSummary } from '@/lib/chat-storage';
 import { nanoid } from 'nanoid';
-import { useChatNavigation } from '@/lib/navigation';
+import { useNavigation } from '@/hooks/useNavigation';
+import { useSession } from 'next-auth/react';
 
 interface ChatContextType {
   conversations: ConversationSummary[] | undefined;
   refreshConversations: () => void;
   deleteConversation: (id: string) => void;
   loadConversation: (id: string) => void;
+  renameConversation: (id: string, newTitle: string) => void;
   messages: UIMessage[];
   status: ChatStatus;
   error: Error | null | undefined;
@@ -38,9 +40,10 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ children }: ChatProviderProps) {
+  const { data: session, status: sessionStatus } = useSession();
   const persistence = useChatPersistence();
   const searchParams = useSearchParams();
-  const { navigateToChat } = useChatNavigation();
+  const { navigateToChat } = useNavigation();
   const [conversationId, setConversationId] = useState(nanoid());
   const handleChangeConversationId = (id: string) => {
     setConversationId(id);
@@ -60,6 +63,16 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const loadConversation = useCallback((id: string) => {
     handleChangeConversationId(id);
   }, []);
+
+  const renameConversation = useCallback(
+    (conversationId: string, newTitle: string) => {
+      const conversation = persistence.loadConversation(conversationId);
+      if (conversation) {
+        persistence.saveConversation(conversationId, conversation, newTitle);
+      }
+    },
+    [persistence]
+  );
 
   useEffect(() => {
     const syncUrlWithConversation = () => {
@@ -87,6 +100,11 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
+      if (!session) {
+        console.warn('Cannot send messages - user not authenticated');
+        return;
+      }
+
       const hasText = Boolean(message.text);
       const hasAttachments = Boolean(message.files?.length);
 
@@ -99,12 +117,22 @@ export function ChatProvider({ children }: ChatProviderProps) {
         files: message.files,
       });
     },
-    [sendMessage]
+    [sendMessage, session]
   );
+
+  useEffect(() => {
+    if (sessionStatus === 'unauthenticated') {
+      ChatStorage.clearSessionData(null);
+      setMessages([]);
+      // TODO: Add user notification about session-based storage behavior
+      window.location.href = '/login';
+    }
+  }, [sessionStatus, setMessages]);
 
   useEffect(() => {
     const autoSaveMessages = () => {
       if (messages.length === 0) return;
+      if (!session) return;
 
       const storedMessages = persistence.loadConversation(id);
       const hasNewMessages = storedMessages?.length !== messages.length;
@@ -116,7 +144,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     };
 
     autoSaveMessages();
-  }, [status, chat.messages, id, messages.length, persistence]);
+  }, [status, chat.messages, id, messages.length, persistence, session]);
 
   return (
     <ChatContext.Provider
@@ -125,6 +153,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
         refreshConversations: persistence.refreshConversations,
         deleteConversation,
         loadConversation,
+        renameConversation,
 
         messages,
         status,
