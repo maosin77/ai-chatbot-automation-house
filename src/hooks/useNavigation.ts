@@ -10,7 +10,7 @@ export const navigationRoutes = {
   },
 } as const;
 
-export const useChatNavigation = () => {
+export const useNavigation = () => {
   const router = useRouter();
 
   const navigateToChat = (conversationId: string) => {
@@ -26,3 +26,4 @@ export const useChatNavigation = () => {
     navigateToNewChat,
   };
 };
+

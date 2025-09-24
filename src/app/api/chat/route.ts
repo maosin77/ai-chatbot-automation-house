@@ -1,6 +1,6 @@
 import { streamText, UIMessage, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { validateUIMessages } from '@/lib/chat-storage';
+import { validateUIMessages } from '@/lib/utils';
 
 export const maxDuration = 30;
 

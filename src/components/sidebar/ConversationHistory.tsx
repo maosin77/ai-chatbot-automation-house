@@ -2,16 +2,15 @@
 
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Plus } from 'lucide-react';
-import { ClientChatStorage } from '@/lib/chat-storage';
 import { Button } from '@/components/ui/button';
 import { useChatContext } from '@/contexts/ChatContext';
 import { ConversationItem } from './ConversationItem';
 import { ConversationMenu } from './ConversationMenu';
-import { useChatNavigation } from '@/lib/navigation';
+import { useNavigation } from '@/hooks/useNavigation';
 
 export function ConversationHistory() {
-  const { conversations, refreshConversations, id } = useChatContext();
-  const { navigateToChat, navigateToNewChat } = useChatNavigation();
+  const { conversations, id } = useChatContext();
+  const { navigateToChat, navigateToNewChat } = useNavigation();
 
   const handleNewConversation = () => {
     navigateToNewChat();
@@ -19,24 +18,6 @@ export function ConversationHistory() {
 
   const onSelectConversation = (id: string) => {
     navigateToChat(id);
-  };
-
-  const handleDeleteConversation = (
-    id: string,
-    event: React.MouseEvent
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (confirm('Are you sure you want to delete this conversation?')) {
-      // TODO: add custom dialog
-      try {
-        ClientChatStorage.deleteConversation(id);
-        refreshConversations();
-      } catch (error) {
-        console.error('Error deleting conversation:', error);
-      }
-    }
   };
 
   if (!conversations) {
@@ -78,14 +59,7 @@ export function ConversationHistory() {
                   isSelected={id === conversation.id}
                   onSelect={onSelectConversation}
                 />
-                <ConversationMenu
-                  conversationId={conversation.id}
-                  currentTitle={conversation.title}
-                  onDelete={(event) =>
-                    handleDeleteConversation(conversation.id, event)
-                  }
-                  onUpdate={refreshConversations}
-                />
+                <ConversationMenu conversation={conversation} />
               </div>
             </SidebarMenuItem>
           ))

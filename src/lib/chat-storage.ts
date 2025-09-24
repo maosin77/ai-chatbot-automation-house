@@ -1,5 +1,10 @@
 import { UIMessage } from 'ai';
-import { nanoid } from 'nanoid';
+import { Session } from 'next-auth';
+import {
+  generateConversationTitle,
+  parseStoredConversation,
+  parseStoredConversationList,
+} from './utils';
 
 export interface StoredConversation {
   id: string;
@@ -17,101 +22,147 @@ export interface ConversationSummary {
   messageCount: number;
 }
 
-// Client-side storage using localStorage
-export class ClientChatStorage {
-  private static CONVERSATIONS_KEY = 'chatbot-conversations';
-  private static CONVERSATION_PREFIX = 'chatbot-conv-';
+export class ChatStorage {
+  private static getSessionKey(session: Session): string {
+    const sessionId = session.user?.email || 'anonymous';
+    return `chatbot-session-${sessionId}`;
+  }
 
-  static loadConversation(id: string): StoredConversation | null {
-    const stored = localStorage.getItem(`${this.CONVERSATION_PREFIX}${id}`);
+  private static isSessionExpired(session: Session): boolean {
+    if (!session.expires) return false;
+    return new Date() > new Date(session.expires);
+  }
 
-    if (!stored) return null;
+  private static validateSession(session: Session | null): session is Session {
+    if (!session) return false;
 
-    try {
-      const conversation = JSON.parse(stored) as StoredConversation; // TODO: use zod to validate it.
-      // Convert date strings back to Date objects
-      conversation.createdAt = new Date(conversation.createdAt);
-      conversation.updatedAt = new Date(conversation.updatedAt);
-      return conversation;
-    } catch (error) {
-      console.error('Error loading conversation:', error);
-      return null;
+    if (this.isSessionExpired(session)) {
+      this.clearSessionData(session);
+      return false;
+    }
+
+    return true;
+  }
+
+  static clearSessionData(session: Session | null): void {
+    if (!session) {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('chatbot-'))
+        .forEach((key) => localStorage.removeItem(key));
+    } else {
+      const sessionKey = this.getSessionKey(session);
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(sessionKey))
+        .forEach((key) => localStorage.removeItem(key));
     }
   }
 
+  static cleanupExpiredSessions(): void {
+    Object.keys(localStorage)
+      .filter((key) => key.includes('-expires'))
+      .forEach((key) => {
+        const expiry = localStorage.getItem(key);
+        if (expiry && new Date() > new Date(expiry)) {
+          const sessionPrefix = key.replace('-expires', '');
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith(sessionPrefix))
+            .forEach((k) => localStorage.removeItem(k));
+        }
+      });
+  }
+
+  static loadConversation(
+    session: Session | null,
+    id: string
+  ): StoredConversation | null {
+    if (!this.validateSession(session)) return null;
+
+    const sessionKey = this.getSessionKey(session);
+    const stored = localStorage.getItem(`${sessionKey}-conv-${id}`);
+
+    if (!stored) return null;
+
+    const conversation = parseStoredConversation(stored);
+    if (!conversation) {
+      console.error('Error loading conversation: Invalid JSON format');
+      return null;
+    }
+    return conversation as unknown as StoredConversation;
+  }
+
   static saveConversation(
+    session: Session | null,
     id: string,
     messages: UIMessage[],
     title?: string
   ): void {
-    const existing = this.loadConversation(id);
+    if (!this.validateSession(session)) return;
 
-    // Generate title from first user message if not provided
-    if (!title && messages.length > 0) {
-      const firstUserMessage = messages.find((m) => m.role === 'user');
-      if (firstUserMessage && firstUserMessage.parts) {
-        const textPart = firstUserMessage.parts.find(
-          (part) => part.type === 'text'
-        );
-        if (
-          textPart &&
-          'text' in textPart &&
-          typeof textPart.text === 'string'
-        ) {
-          title =
-            textPart.text.slice(0, 50) +
-            (textPart.text.length > 50 ? '...' : '');
-        }
-      }
-    }
+    const sessionKey = this.getSessionKey(session);
+    const existing = this.loadConversation(session, id);
 
     const conversation: StoredConversation = {
       messages,
       id,
-      createdAt: existing?.createdAt ? new Date(existing.createdAt) : new Date(),
-      title: title ?? 'Chat',
+      createdAt: existing?.createdAt
+        ? new Date(existing.createdAt)
+        : new Date(),
+      title: title ?? generateConversationTitle(messages),
       updatedAt: new Date(),
     };
 
     localStorage.setItem(
-      `${this.CONVERSATION_PREFIX}${id}`,
+      `${sessionKey}-conv-${id}`,
       JSON.stringify(conversation)
     );
 
-    this.updateConversationInList(conversation);
+    // Store session expiry
+    if (session.expires) {
+      localStorage.setItem(`${sessionKey}-expires`, session.expires.toString());
+    }
+
+    this.updateConversationInList(session, conversation);
   }
 
-  static getConversationList(): ConversationSummary[] {
-    const stored = localStorage.getItem(this.CONVERSATIONS_KEY);
+  static getConversationList(session: Session | null): ConversationSummary[] {
+    if (!this.validateSession(session)) return [];
+
+    const sessionKey = this.getSessionKey(session);
+    const stored = localStorage.getItem(`${sessionKey}-conversations`);
+
     if (!stored) return [];
 
-    try {
-      const conversations = JSON.parse(stored) as ConversationSummary[]; // TODO: use zod to validate.
-      return conversations.map((conv) => ({
-        ...conv,
-        createdAt: new Date(conv.createdAt),
-        updatedAt: new Date(conv.updatedAt),
-      }));
-    } catch (error) {
-      console.error('Error loading conversation list:', error);
-      return [];
+    const conversations = parseStoredConversationList(
+      stored
+    ) as unknown as ConversationSummary[];
+    if (conversations.length === 0 && stored.trim() !== '[]') {
+      console.error('Error loading conversation list: Invalid JSON format');
     }
+    return conversations;
   }
 
-  static deleteConversation(id: string): void {
-    localStorage.removeItem(`${this.CONVERSATION_PREFIX}${id}`);
+  static deleteConversation(session: Session | null, id: string): void {
+    if (!session) return;
+
+    const sessionKey = this.getSessionKey(session);
+    localStorage.removeItem(`${sessionKey}-conv-${id}`);
 
     // Update conversation list
-    const conversations = this.getConversationList().filter(
+    const conversations = this.getConversationList(session).filter(
       (conv) => conv.id !== id
     );
-    localStorage.setItem(this.CONVERSATIONS_KEY, JSON.stringify(conversations));
+    localStorage.setItem(
+      `${sessionKey}-conversations`,
+      JSON.stringify(conversations)
+    );
   }
 
   private static updateConversationInList(
+    session: Session,
     conversation: StoredConversation
   ): void {
-    const conversations = this.getConversationList();
+    const sessionKey = this.getSessionKey(session);
+    const conversations = this.getConversationList(session);
     const index = conversations.findIndex(
       (conv) => conv.id === conversation.id
     );
@@ -133,48 +184,10 @@ export class ClientChatStorage {
     // Sort by updatedAt descending
     conversations.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-    localStorage.setItem(this.CONVERSATIONS_KEY, JSON.stringify(conversations));
+    localStorage.setItem(
+      `${sessionKey}-conversations`,
+      JSON.stringify(conversations)
+    );
   }
 }
-
-// Server-side storage utilities (for API routes)
-export const getChatFilePath = (id: string): string => {
-  return `./conversations/${id}.json`;
-};
-
-export const generateChatId = (): string => {
-  return nanoid();
-};
-
-export const validateUIMessages = (
-  messages: unknown
-): messages is UIMessage[] => {
-  return (
-    Array.isArray(messages) &&
-    messages.every(
-      (msg) =>
-        msg &&
-        typeof msg === 'object' &&
-        'role' in msg &&
-        ['user', 'assistant', 'system', 'tool'].includes(msg.role)
-    )
-  );
-};
-
-// Utility function to format relative time
-export const formatRelativeTime = (date: Date): string => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return 'Just now';
-  if (diffMin < 60) return `${diffMin} min ago`;
-  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-  if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-
-  return date.toLocaleDateString();
-};
 
