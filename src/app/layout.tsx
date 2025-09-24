@@ -1,30 +1,27 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { ChatProvider } from '@/contexts/ChatContext';
-import { AppSidebar } from '@/components/sidebar/AppSidebar';
-import { Suspense } from 'react';
+import { LayoutProvider } from '@/components/layout/LayoutProvider';
+import { ServerSessionProvider } from '@/components/auth/ServerSessionProvider';
+import { auth } from '@/auth';
 
 export const metadata: Metadata = {
   title: 'Chatbot-ai',
   description: 'Developed for Automation House',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="en">
       <body className="overflow-auto">
-        <Suspense fallback={<div>Loading...</div>}>
-          <ChatProvider>
-            <SidebarProvider>
-              <AppSidebar>{children}</AppSidebar>
-            </SidebarProvider>
-          </ChatProvider>
-        </Suspense>
+        <ServerSessionProvider session={session}>
+          <LayoutProvider>{children}</LayoutProvider>
+        </ServerSessionProvider>
       </body>
     </html>
   );
