@@ -16,6 +16,7 @@ import { ChatStorage, ConversationSummary } from '@/lib/chat-storage';
 import { nanoid } from 'nanoid';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useSession } from 'next-auth/react';
+import { convertBlobUrlsToDataUrls } from '@/lib/utils';
 
 interface ChatContextType {
   conversations: ConversationSummary[] | undefined;
@@ -99,7 +100,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
   }, [id, persistence.loadConversation, setMessages, persistence]);
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
+    async (message: PromptInputMessage) => {
       if (!session) {
         console.warn('Cannot send messages - user not authenticated');
         return;
@@ -112,9 +113,14 @@ export function ChatProvider({ children }: ChatProviderProps) {
         return;
       }
 
+      // Convert blob URLs to data URLs for files
+      const processedFiles = message.files?.length
+        ? await convertBlobUrlsToDataUrls(message.files)
+        : message.files;
+
       sendMessage({
         text: message.text || 'Sent with attachments',
-        files: message.files,
+        files: processedFiles,
       });
     },
     [sendMessage, session]

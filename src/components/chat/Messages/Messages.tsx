@@ -4,6 +4,7 @@ import { UIDataTypes, UIMessage, UITools } from 'ai';
 import { SourcesMessage } from './Sources';
 import { TextMessage } from './Text';
 import { ReasoningMessage } from './Reasoning';
+import { FileMessage } from './File';
 
 export type UIMessageExtended = UIMessage<unknown, UIDataTypes, UITools>;
 
@@ -45,6 +46,14 @@ export const Messages = ({ messages, status, onRegenerate }: MessagesProps) => {
                       index === message.parts.length - 1 &&
                       message.id === messages.at(-1)?.id
                     }
+                  />
+                );
+              case 'file':
+                return (
+                  <FileMessage
+                    key={`${message.id}-${index}`}
+                    messageId={`${message.id}-${index}`}
+                    part={part}
                   />
                 );
               default:
