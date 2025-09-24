@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openai('gpt-5-nano'),
+    model: openai('gpt-4o'),
     messages: convertToModelMessages(messages),
     tools: {
       web_search: openai.tools.webSearch({
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       }),
     },
     system:
-      'You are a helpful assistant that can answer questions and help with tasks',
+      'You are a helpful assistant that can analyze images, documents, and answer questions',
   });
 
   return result.toUIMessageStreamResponse();

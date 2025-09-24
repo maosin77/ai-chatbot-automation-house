@@ -24,6 +24,7 @@ import {
 import { ChatStatus } from 'ai';
 import { GlobeIcon } from 'lucide-react';
 import { useState } from 'react';
+import { isSupportedFileType } from '@/lib/utils';
 
 const models = [
   {
@@ -48,6 +49,11 @@ export const ChatPromptInput = ({
   const [webSearch, setWebSearch] = useState(false);
 
   const handleSubmit = (message: PromptInputMessage) => {
+    if (message.files?.some((file) => !isSupportedFileType(file.mediaType))) {
+      console.warn('Unsupported file type detected'); // TODO: handle this with toast.
+      return;
+    }
+
     onSubmit(message);
     setInput('');
   };
@@ -58,6 +64,13 @@ export const ChatPromptInput = ({
       className={className}
       globalDrop
       multiple
+      accept="image/*,application/pdf"
+      maxFileSize={10 * 1024 * 1024}
+      onError={(error) => {
+        if ('message' in error) {
+          console.warn('File error:', error.message);
+        }
+      }}
     >
       <PromptInputBody>
         <PromptInputAttachments>

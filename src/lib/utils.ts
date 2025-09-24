@@ -93,3 +93,46 @@ export const parseStoredConversationList = (
   }
 };
 
+export const SUPPORTED_FILE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+];
+
+export const isSupportedFileType = (mediaType?: string): boolean => {
+  if (!mediaType) return false;
+  return SUPPORTED_FILE_TYPES.includes(mediaType);
+};
+
+export const convertBlobUrlsToDataUrls = async <T extends { url?: string }>(
+  files: T[]
+): Promise<T[]> => {
+  return Promise.all(
+    files.map(async (file) => {
+      if (file.url?.startsWith('blob:')) {
+        try {
+          const response = await fetch(file.url);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          return new Promise<T>((resolve) => {
+            reader.onload = () => {
+              resolve({
+                ...file,
+                url: reader.result as string,
+              });
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.warn('Failed to convert blob to data URL:', error);
+          return file;
+        }
+      }
+      return file;
+    })
+  );
+};
+
