@@ -11,7 +11,7 @@ import { useChat as useAiChat } from '@ai-sdk/react';
 import { ChatStatus, UIMessage } from 'ai';
 import { PromptInputMessage } from '@/components/ai-elements/prompt-input';
 import { useChatPersistence } from '@/hooks/useChatPersistence';
-import { useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { ChatStorage, ConversationSummary } from '@/lib/chat-storage';
 import { nanoid } from 'nanoid';
 import { useNavigation } from '@/hooks/useNavigation';
@@ -43,7 +43,7 @@ interface ChatProviderProps {
 export function ChatProvider({ children }: ChatProviderProps) {
   const { data: session, status: sessionStatus } = useSession();
   const persistence = useChatPersistence();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { navigateToChat } = useNavigation();
   const [conversationId, setConversationId] = useState(nanoid());
   const handleChangeConversationId = (id: string) => {
@@ -77,16 +77,25 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
   useEffect(() => {
     const syncUrlWithConversation = () => {
-      const urlConversationId = searchParams.get('conversationId');
+      // Only apply navigation logic on chat pages
+      if (!pathname.startsWith('/chat')) {
+        return;
+      }
+
+      // Extract conversation ID from pathname: /chat/[conversationId]
+      const pathSegments = pathname.split('/');
+      const urlConversationId = pathSegments[2]; // /chat/[conversationId]
+
       if (urlConversationId && urlConversationId !== id) {
         loadConversation(urlConversationId);
-      } else if (!urlConversationId) {
+      } else if (!urlConversationId && pathname === '/chat') {
+        // Only redirect if we're exactly on /chat without an ID
         navigateToChat(id);
       }
     };
 
     syncUrlWithConversation();
-  }, [searchParams, loadConversation, id, navigateToChat]);
+  }, [pathname, loadConversation, id, navigateToChat]);
 
   useEffect(() => {
     const loadStoredMessages = () => {
