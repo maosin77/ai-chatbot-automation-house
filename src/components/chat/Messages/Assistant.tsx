@@ -2,6 +2,7 @@
 
 import { Action, Actions } from '@/components/ai-elements/actions';
 import { CopyIcon, RefreshCcwIcon } from 'lucide-react';
+import { copyToClipboard } from '@/lib/utils';
 
 interface AssistantActionsProps {
   text: string;
@@ -14,12 +15,13 @@ export const AssistantActions = ({
 }: AssistantActionsProps) => {
   return (
     <Actions className="mt-2">
-      <Action onClick={() => onRegenerate()} label="Retry">
+      <Action onClick={onRegenerate} label="Retry">
         <RefreshCcwIcon className="size-3" />
       </Action>
-      <Action onClick={() => navigator.clipboard.writeText(text)} label="Copy">
+      <Action onClick={() => copyToClipboard(text)} label="Copy">
         <CopyIcon className="size-3" />
       </Action>
     </Actions>
   );
 };
+
