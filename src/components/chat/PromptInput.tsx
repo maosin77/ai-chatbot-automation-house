@@ -66,6 +66,7 @@ export const ChatPromptInput = ({
         <PromptInputTextarea
           onChange={(e) => setInput(e.target.value)}
           value={input}
+          disabled={status === 'streaming' || status === 'submitted'}
         />
       </PromptInputBody>
       <PromptInputToolbar>
@@ -85,7 +86,9 @@ export const ChatPromptInput = ({
           </PromptInputButton>
           <PromptInputModelSelect
             onValueChange={(value) => {
-              setModel(value);
+              if (value !== model) {
+                setModel(value);
+              }
             }}
             value={model}
           >
@@ -104,7 +107,10 @@ export const ChatPromptInput = ({
             </PromptInputModelSelectContent>
           </PromptInputModelSelect>
         </PromptInputTools>
-        <PromptInputSubmit disabled={!input && !status} status={status} />
+        <PromptInputSubmit
+          disabled={!input || status === 'streaming' || status === 'submitted'}
+          status={status}
+        />
       </PromptInputToolbar>
     </PromptInput>
   );

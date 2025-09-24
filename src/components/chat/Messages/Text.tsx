@@ -3,8 +3,8 @@
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Response } from '@/components/ai-elements/response';
 import { Fragment } from 'react';
+import { UIMessageExtended } from './Messages';
 import { AssistantActions } from './Assistant';
-import type { UIMessageExtended } from './Messages';
 
 interface TextMessageProps {
   messageId: string;

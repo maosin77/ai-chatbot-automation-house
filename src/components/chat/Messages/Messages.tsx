@@ -1,9 +1,9 @@
 'use client';
 
+import { UIDataTypes, UIMessage, UITools } from 'ai';
+import { SourcesMessage } from './Sources';
 import { TextMessage } from './Text';
 import { ReasoningMessage } from './Reasoning';
-import { SourcesMessage } from './Sources';
-import { UIDataTypes, UIMessage, UITools } from 'ai';
 
 export type UIMessageExtended = UIMessage<unknown, UIDataTypes, UITools>;
 

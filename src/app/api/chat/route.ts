@@ -1,5 +1,6 @@
 import { streamText, UIMessage, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
+import { validateUIMessages } from '@/lib/chat-storage';
 
 export const maxDuration = 30;
 
@@ -9,6 +10,10 @@ export async function POST(req: Request) {
   }: {
     messages: UIMessage[];
   } = await req.json();
+
+  if (!validateUIMessages(messages)) {
+    return new Response('Invalid messages format', { status: 400 });
+  }
 
   const result = streamText({
     model: openai('gpt-5-nano'),
